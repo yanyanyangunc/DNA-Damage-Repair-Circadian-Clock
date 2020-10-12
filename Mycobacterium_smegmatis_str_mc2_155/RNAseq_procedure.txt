@@ -1,0 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu OCT 12 2020
+
+@author: Yanyan Yang UNC-CH
+"""
+
+1, Use SALMON to get transcript per million (TPM)
+salmon index -t Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.cdna.all.fa -i Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.cdna.all_index
+salmon quant -i Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.cdna.all_index -l A --gcBias -1 sample_R1.fastq -2 sample_R2.fastq -o sample
