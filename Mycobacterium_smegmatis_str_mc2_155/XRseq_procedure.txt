@@ -16,7 +16,7 @@ module load bbmap
 bbduk.sh in=a.fastq.gz out=a_trimed.fastq ktrim=r k=21 hdist=2 minlen=1 mink=15 ref=illumina_small_RNA_adaptor.fa
 
 Or using cutadapt, I suggest use cutadapt, and adjust the -m and -M according to your oligo's length
-module load cutadapt; cutadapt -a TGGAATTCTCGGGTGCCAAGGAACTCCAGTNNNNNNACGATCTCGTATGCCGTCTTCTGCTTG --discard-untrimmed -m 13 -M 13 -o a.cu.fastq a.fastq.gz
+module load cutadapt; cutadapt -a TGGAATTCTCGGGTGCCAAGGAACTCCAGTNNNNNNACGATCTCGTATGCCGTCTTCTGCTTG --discard-untrimmed -m 5 -M 35 -o a.cu.fastq a.fastq.gz
 
 3, remove duplicate reads
 module load fastx_toolkit/0.0.14
@@ -24,6 +24,7 @@ fastx_collapser -v -i a.cu.fastq -o a.fasta -Q33
 
 4, remove 50mer if use bbmap to remove extra adaptor. If you use cutadapt, you don't need this step
 python seperate_50bp_LL.py
+
 
 5, Bowtie2 mapping data or Bowtie
 module load bowtie2
@@ -35,32 +36,55 @@ bowtie2 -x Bowtie2Index/Mycobacterium_smegmatis_str_mc2_155.ASM1500v1 -f a.fasta
 module load samtools
 sbatch -t 10-00:00:00 --mem=80000 -o a.out --wrap="samtools sort -o a.bam a.sam"
 
-7, align to genome reads number
+7, bam to bed file
+module load bedtools
+bedtools bamtobed -i a.bam > a.bed
+
+8, bed to fasta
+module load bedtools
+bedtools getfasta -fi Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.dna.chromosome.Chromosome.fa -bed a.bed -fo a.fa -s
+
+9, length distribution to analysis the oligo length distribution
+python Length_Dis_batch.py
+
+10, nucleotide distribution for 13mer
+python Nucleotide_Dis_Batch.py
+
+11, module load cutadapt; cutadapt -a TGGAATTCTCGGGTGCCAAGGAACTCCAGTNNNNNNACGATCTCGTATGCCGTCTTCTGCTTG --discard-untrimmed -m 13 -M 13 -o a.cu.fastq a.fastq.gz
+
+12, repeat step 3
+
+13, select TT at 8-9 in 13mer oligo
+python Tselection.py
+
+14, repeat step 5 and 6
+
+15, align to genome reads number
 module load samtools
 samtools view -F 0x04 -c a.bam 606989
 
-8, generate fai
+16, generate fai
 module load samtools
 samtools faidx Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.dna.chromosome.Chromosome.fa
 
-9, convert bam file into bedgraph file and normalize all reads into 1 million through scale
+17, convert bam file into bedgraph file and normalize all reads into 1 million through scale
 a.sam scale=1,000,000/606989=1.64747631
 
 module load bedtools
 bedtools genomecov -ibam a.bam -g hg38.chrom.sizes -bg -strand + -scale 1.64747631 > a_plus.bedgraph
 bedtools genomecov -ibam a.bam -g hg38.chrom.sizes -bg -strand - -scale 1.64747631 > a_minus.bedgraph
 
-10, sorted bedgraph
+18, sorted bedgraph
 sort -k1,1 -k2,2n a_plus.bedgraph > a_plus_sorted.bedgraph
 sort -k1,1 -k2,2n a_minus.bedgraph > a_minus_sorted.bedgraph
 
 
-11, convert bedgraph into bigwig
+19, convert bedgraph into bigwig
 module load ucsctools/320
 bedGraphToBigWig a_plus_sorted.bedgraph hg38.chrom.sizes a_plus.bigWig
 bedGraphToBigWig a_minus_sorted.bedgraph hg38.chrom.sizes a_minus.bigWig
 
-12, get hits reads number
+20, get hits reads number
 bedtools intersect -c -a smeg_XRseq.bed -b a.bam -wa -S -F 0.5 > a_TS.txt
 bedtools intersect -c -a smeg_XRseq.bed -b a.bam -wa -s -F 0.5 > a_NTS.txt
 
@@ -73,22 +97,9 @@ bedtools intersect -c -a smeg_XRseq_minus.bed -b a_pos.bam > a_TS1.bed
 bedtools intersect -c -a smeg_XRseq_plus.bed -b a_neg.bam > a_TS2.bed
 bedtools intersect -c -a smeg_XRseq_plus.bed -b a_pos.bam > a_NTS2.bed
 
+21, check repeat
+bedtools makewindows -b smeg_gene.bed -w 500 > ms155_500bpw.bed
+bedtools intersect -c -a ms155_500bpw.bed -b a.bam > a500bpw.bed
 
-13, module load cutadapt; cutadapt -a TGGAATTCTCGGGTGCCAAGGAACTCCAGTNNNNNNACGATCTCGTATGCCGTCTTCTGCTTG --discard-untrimmed -m 5 -M 35 -o a.cu.fastq a.fastq.gz
 
-14, repeat step 5 and step 6
-
-15, bam to bed file
-module load bedtools
-bedtools bamtobed -i a.bam > a.bed
-
-16, bed to fasta
-module load bedtools
-bedtools getfasta -fi Mycobacterium_smegmatis_str_mc2_155.ASM1500v1.dna.chromosome.Chromosome.fa -bed a.bed -fo a.fa -s
-
-17, length distribution to analysis the oligo length distribution
-python Length_Dis_batch.py
-
-18, nucleotide distribution for 13mer
-python Nucleotide_Dis_Batch.py
 
