@@ -98,7 +98,7 @@ bedtools intersect -c -a smeg_XRseq_plus.bed -b a_neg.bam > a_TS2.bed
 bedtools intersect -c -a smeg_XRseq_plus.bed -b a_pos.bam > a_NTS2.bed
 
 21, check repeat
-bedtools makewindows -b smeg_gene.bed -w 500 > ms155_500bpw.bed
+bedtools makewindows -g Msmegmatis.size -w 500 > ms155_500bpw.bed
 bedtools intersect -c -a ms155_500bpw.bed -b a.bam > a500bpw.bed
 
 
